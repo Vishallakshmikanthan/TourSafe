@@ -48,7 +48,9 @@ export function ResponseTimeChart() {
           <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
           <XAxis
             dataKey="date"
-            tickFormatter={(v) => format(parseISO(v), "dd/MM")}
+            tickFormatter={(v) => {
+              try { return format(parseISO(String(v)), "dd/MM"); } catch { return String(v); }
+            }}
             tick={{ fontSize: 11, fill: "#4A5568" }}
           />
           <YAxis

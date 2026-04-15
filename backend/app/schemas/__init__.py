@@ -233,3 +233,139 @@ class KPIsOut(BaseModel):
     sos_today_delta: float
     avg_response_minutes: float
     avg_response_minutes_delta: float
+
+
+# ─── Registration ─────────────────────────────────────────────────────────────
+
+class RegisterRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=8)
+    role: str = "tourist"
+    full_name: Optional[str] = None
+
+
+class UniqueIdEmailResponse(BaseModel):
+    message: str
+    unique_id: str
+    role: str
+
+
+# ─── Itinerary ────────────────────────────────────────────────────────────────
+
+class ItineraryStopCreate(BaseModel):
+    spot_name: str
+    address: Optional[str] = None
+    stop_type: str = "tourist_spot"
+    planned_arrival: Optional[str] = None
+    planned_departure: Optional[str] = None
+    expected_duration_hours: float = 3.0
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    notes: Optional[str] = None
+
+
+class ItineraryStopOut(BaseModel):
+    id: str
+    itinerary_id: str
+    spot_name: str
+    address: Optional[str] = None
+    stop_type: str
+    planned_arrival: Optional[str] = None
+    planned_departure: Optional[str] = None
+    expected_duration_hours: float
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ItineraryCreate(BaseModel):
+    title: str = "My Trip"
+    start_date: str
+    end_date: str
+    notes: Optional[str] = None
+    stops: Optional[list[ItineraryStopCreate]] = []
+
+
+class ItineraryUpdate(BaseModel):
+    title: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    notes: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class ItineraryOut(BaseModel):
+    id: str
+    tourist_id: str
+    title: str
+    start_date: str
+    end_date: str
+    is_active: bool
+    notes: Optional[str] = None
+    stops: list[ItineraryStopOut] = []
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ─── Authority Profile ────────────────────────────────────────────────────────
+
+class AuthorityProfileCreate(BaseModel):
+    authority_type: str = "police"
+    org_name: str
+    badge_number: Optional[str] = None
+    contact_phone: Optional[str] = None
+    contact_email: Optional[EmailStr] = None
+    agency_tour_types: Optional[list[str]] = []
+    jurisdiction_spots: Optional[list[str]] = []
+
+
+class AuthorityProfileUpdate(BaseModel):
+    org_name: Optional[str] = None
+    badge_number: Optional[str] = None
+    contact_phone: Optional[str] = None
+    contact_email: Optional[EmailStr] = None
+    agency_tour_types: Optional[list[str]] = None
+    jurisdiction_spots: Optional[list[str]] = None
+
+
+class AuthorityProfileOut(BaseModel):
+    id: str
+    user_id: str
+    authority_type: str
+    org_name: str
+    badge_number: Optional[str] = None
+    contact_phone: Optional[str] = None
+    contact_email: Optional[str] = None
+    agency_tour_types: list[str] = []
+    jurisdiction_spots: list[str] = []
+    verified: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ─── Safety Check ─────────────────────────────────────────────────────────────
+
+class SafetyCheckRespondRequest(BaseModel):
+    response: str  # "safe" | "unsafe"
+
+
+class SafetyCheckOut(BaseModel):
+    id: str
+    tourist_id: str
+    reason: Optional[str] = None
+    sent_at: datetime
+    response: Optional[str] = None
+    responded_at: Optional[datetime] = None
+    escalated: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

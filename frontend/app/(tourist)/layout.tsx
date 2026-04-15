@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
@@ -12,18 +12,24 @@ import {
   User,
   FileText,
   LogOut,
-  Wifi,
-  WifiOff,
   ChevronLeft,
   ChevronRight,
+  CalendarDays,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
+
+const VoiceSOS = dynamic(() => import("@/components/sos/VoiceSOS"), { ssr: false });
+const SafetyCheckModal = dynamic(
+  () => import("@/components/safety-check/SafetyCheckModal"),
+  { ssr: false }
+);
 
 const NAV_ITEMS = [
   { href: "/tourist/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/tourist/map", icon: Map, label: "My Location" },
   { href: "/tourist/sos", icon: ShieldAlert, label: "SOS Emergency", accent: true },
+  { href: "/tourist/itinerary", icon: CalendarDays, label: "My Itinerary" },
   { href: "/tourist/digital-id", icon: CreditCard, label: "Digital ID" },
   { href: "/tourist/profile", icon: User, label: "My Profile" },
   { href: "/tourist/incidents", icon: FileText, label: "Incidents" },
@@ -31,35 +37,31 @@ const NAV_ITEMS = [
 
 export default function TouristLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user, signOut } = useAuthStore();
+  const { user, signOut, initializeAuth } = useAuthStore();
   const [collapsed, setCollapsed] = useState(false);
-  const [wsConnected, setWsConnected] = useState(true);
+
+  useEffect(() => {
+    initializeAuth();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="flex h-screen bg-ts-light overflow-hidden">
-      {/* Sidebar */}
-      <motion.aside
-        animate={{ width: collapsed ? 64 : 220 }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        className="relative flex flex-col bg-ts-navy border-r border-white/10 shrink-0 overflow-hidden"
+      {/* Sidebar - CSS transition for zero-jank collapse */}
+      <aside
+        className={cn(
+          "relative flex flex-col bg-ts-navy border-r border-white/10 shrink-0 overflow-hidden transition-[width] duration-200",
+          collapsed ? "w-16" : "w-[220px]"
+        )}
       >
         {/* Logo */}
-        <div className="h-14 flex items-center px-4 border-b border-white/10 shrink-0">
+        <div className="h-14 flex items-center px-4 border-b border-white/10 shrink-0 gap-3">
           <div className="w-8 h-8 bg-ts-saffron rounded-lg flex items-center justify-center shrink-0">
             <ShieldAlert className="w-5 h-5 text-white" />
           </div>
-          <AnimatePresence>
-            {!collapsed && (
-              <motion.span
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                className="ml-3 font-bold text-white text-sm whitespace-nowrap"
-              >
-                TourSafe
-              </motion.span>
-            )}
-          </AnimatePresence>
+          {!collapsed && (
+            <span className="font-bold text-white text-sm whitespace-nowrap">TourSafe</span>
+          )}
         </div>
 
         {/* Nav items */}
@@ -70,8 +72,9 @@ export default function TouristLayout({ children }: { children: React.ReactNode 
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={true}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm",
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm",
                   item.accent
                     ? active
                       ? "bg-ts-alert-red text-white"
@@ -82,18 +85,9 @@ export default function TouristLayout({ children }: { children: React.ReactNode 
                 )}
               >
                 <item.icon className="w-4 h-4 shrink-0" />
-                <AnimatePresence>
-                  {!collapsed && (
-                    <motion.span
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="whitespace-nowrap"
-                    >
-                      {item.label}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
+                {!collapsed && (
+                  <span className="whitespace-nowrap">{item.label}</span>
+                )}
               </Link>
             );
           })}
@@ -107,21 +101,14 @@ export default function TouristLayout({ children }: { children: React.ReactNode 
                 {user?.full_name?.charAt(0) ?? "T"}
               </span>
             </div>
-            <AnimatePresence>
-              {!collapsed && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="flex-1 min-w-0"
-                >
-                  <p className="text-xs font-medium text-white truncate">
-                    {user?.full_name ?? "Tourist"}
-                  </p>
-                  <p className="text-xs text-white/40 truncate">{user?.email}</p>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {!collapsed && (
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-white truncate">
+                  {user?.full_name ?? "Tourist"}
+                </p>
+                <p className="text-xs text-white/40 truncate">{user?.email}</p>
+              </div>
+            )}
           </div>
           <button
             onClick={() => signOut()}
@@ -131,13 +118,7 @@ export default function TouristLayout({ children }: { children: React.ReactNode 
             )}
           >
             <LogOut className="w-3.5 h-3.5 shrink-0" />
-            <AnimatePresence>
-              {!collapsed && (
-                <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  Sign out
-                </motion.span>
-              )}
-            </AnimatePresence>
+            {!collapsed && <span>Sign out</span>}
           </button>
         </div>
 
@@ -152,10 +133,14 @@ export default function TouristLayout({ children }: { children: React.ReactNode 
             <ChevronLeft className="w-3.5 h-3.5 text-ts-slate" />
           )}
         </button>
-      </motion.aside>
+      </aside>
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto scrollbar-thin">{children}</main>
+
+      {/* Global tourist components */}
+      <VoiceSOS />
+      <SafetyCheckModal />
     </div>
   );
 }

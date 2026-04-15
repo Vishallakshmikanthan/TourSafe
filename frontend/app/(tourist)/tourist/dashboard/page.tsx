@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
-import { useSosStore } from "@/store/sosStore";
+import { useSOSStore } from "@/store/sosStore";
 import { useAlertStore } from "@/store/alertStore";
 import { touristApi, alertApi } from "@/lib/api";
 import type { Tourist, DashboardKPIs } from "@/types";
@@ -27,7 +27,7 @@ const TouristMiniMap = dynamic(() => import("@/components/map/TouristMiniMapClie
 
 export default function TouristDashboard() {
   const { user } = useAuthStore();
-  const { activeEvents } = useSosStore();
+  const { activeEvents } = useSOSStore();
   const { alerts } = useAlertStore();
   const [tourist, setTourist] = useState<Tourist | null>(null);
   const [kpis, setKpis] = useState<DashboardKPIs | null>(null);

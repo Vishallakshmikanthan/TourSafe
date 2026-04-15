@@ -17,11 +17,22 @@ export interface Tourist {
   current_zone_id?: string;
   current_zone?: string;
   current_location?: { latitude: number; longitude: number };
-  status?: "safe" | "alert" | "sos";
+  status?: "safe" | "alert" | "sos" | "warning" | "inactive";
   incident_count?: number;
   last_seen_at?: string;
+  last_seen?: string;
   is_active: boolean;
   created_at: string;
+  // Extended mock fields
+  battery_pct?: number;
+  anomaly_score?: number;
+  blood_type?: string;
+  medical_conditions?: string[];
+  allergies?: string[];
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
+  emergency_contact_relation?: string;
+  age?: number;
 }
 
 export interface TouristLocation {
@@ -283,4 +294,86 @@ export interface TouristMarker {
   longitude: number;
   status: "safe" | "alert" | "sos" | "inactive";
   last_seen: string;
+}
+
+// ─── Itinerary Types ──────────────────────────────────────────────────────────
+
+export type StopType = "hotel" | "tourist_spot" | "transport" | "restaurant" | "other";
+
+export interface ItineraryStop {
+  id: string;
+  itinerary_id: string;
+  spot_name: string;
+  address?: string;
+  stop_type: StopType;
+  planned_arrival?: string;
+  planned_departure?: string;
+  expected_duration_hours: number;
+  latitude?: number;
+  longitude?: number;
+  notes?: string;
+  created_at: string;
+}
+
+export interface Itinerary {
+  id: string;
+  tourist_id: string;
+  title: string;
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
+  notes?: string;
+  stops: ItineraryStop[];
+  created_at: string;
+}
+
+export interface ItineraryCreate {
+  title: string;
+  start_date: string;
+  end_date: string;
+  notes?: string;
+  stops?: Omit<ItineraryStop, "id" | "itinerary_id" | "created_at">[];
+}
+
+export interface ItineraryStopCreate {
+  spot_name: string;
+  address?: string;
+  stop_type: StopType;
+  planned_arrival?: string;
+  planned_departure?: string;
+  expected_duration_hours?: number;
+  latitude?: number;
+  longitude?: number;
+  notes?: string;
+}
+
+// ─── Authority Profile Types ──────────────────────────────────────────────────
+
+export type AuthorityType = "police" | "agency" | "hospital" | "other";
+
+export interface AuthorityProfile {
+  id: string;
+  user_id: string;
+  authority_type: AuthorityType;
+  org_name: string;
+  badge_number?: string;
+  contact_phone?: string;
+  contact_email?: string;
+  agency_tour_types: string[];
+  jurisdiction_spots: string[];
+  verified: boolean;
+  created_at: string;
+}
+
+// ─── Safety Check Types ───────────────────────────────────────────────────────
+
+export interface SafetyCheck {
+  id: string;
+  tourist_id: string;
+  reason?: string;
+  sent_at: string;
+  response?: "safe" | "unsafe" | "no_response" | null;
+  responded_at?: string;
+  escalated: boolean;
+  created_at: string;
 }

@@ -19,7 +19,11 @@ class Settings(BaseSettings):
     # Supabase
     SUPABASE_URL: str = ""
     SUPABASE_SERVICE_ROLE_KEY: str = ""
+    SUPABASE_ANON_KEY: str = ""
     SUPABASE_JWT_SECRET: str = ""
+
+    # SMS
+    FAST2SMS_API_KEY: str = ""
 
     # Redis / Celery
     REDIS_URL: str = "redis://localhost:6379/0"

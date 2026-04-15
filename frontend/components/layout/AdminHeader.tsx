@@ -3,6 +3,7 @@
 import { Bell, Search, Wifi, WifiOff, AlertTriangle, Clock } from "lucide-react";
 import { useAlertStore } from "@/store/alertStore";
 import { useSOSStore } from "@/store/sosStore";
+import { useAuthStore } from "@/store/authStore";
 import { format } from "date-fns";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -14,12 +15,17 @@ interface AdminHeaderProps {
 export function AdminHeader({ zoneName = "All Zones" }: AdminHeaderProps) {
   const { unreadCount } = useAlertStore();
   const { activeEvents } = useSOSStore();
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const { initializeAuth } = useAuthStore();
+  // null on server; populated only after mount to prevent hydration mismatch
+  const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [wsConnected] = useState(true);
 
   useEffect(() => {
+    initializeAuth();
+    setCurrentTime(new Date());
     const t = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -77,10 +83,10 @@ export function AdminHeader({ zoneName = "All Zones" }: AdminHeaderProps) {
         )}
       </button>
 
-      {/* Clock */}
+      {/* Clock — suppressed during SSR to avoid hydration mismatch */}
       <div className="flex items-center gap-1.5 text-xs text-ts-slate/60 font-mono">
         <Clock className="w-3.5 h-3.5" />
-        {format(currentTime, "HH:mm:ss")}
+        {currentTime ? format(currentTime, "HH:mm:ss") : "--:--:--"}
       </div>
     </header>
   );

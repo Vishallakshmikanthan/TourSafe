@@ -346,3 +346,148 @@ VALUES
     ('Restricted Border Zone Alpha', 'Border restricted zone', 'restricted', 5, '#C53030'),
     ('Emergency Response Zone 1', 'Coordinated emergency response area', 'emergency', 4, '#FF6B00')
 ON CONFLICT DO NOTHING;
+
+-- ============================================================
+-- MIGRATION ADDENDUM: Itinerary, Authority Profile, Safety Check
+-- ============================================================
+
+-- Stop type enum
+DO $$ BEGIN
+  CREATE TYPE stop_type_enum AS ENUM ('hotel', 'tourist_spot', 'transport', 'restaurant', 'other');
+EXCEPTION WHEN duplicate_object THEN NULL; END$$;
+
+-- Authority type enum
+DO $$ BEGIN
+  CREATE TYPE authority_type_enum AS ENUM ('police', 'agency', 'hospital', 'other');
+EXCEPTION WHEN duplicate_object THEN NULL; END$$;
+
+-- Safety check response enum
+DO $$ BEGIN
+  CREATE TYPE safety_response_enum AS ENUM ('safe', 'unsafe', 'no_response');
+EXCEPTION WHEN duplicate_object THEN NULL; END$$;
+
+-- DID BC status enum (may already exist from blockchain_dids)
+DO $$ BEGIN
+  CREATE TYPE did_bc_status_enum AS ENUM ('active', 'pending', 'revoked');
+EXCEPTION WHEN duplicate_object THEN NULL; END$$;
+
+-- Itineraries
+CREATE TABLE IF NOT EXISTS itineraries (
+    id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tourist_id  UUID NOT NULL REFERENCES tourists(id) ON DELETE CASCADE,
+    title       TEXT NOT NULL DEFAULT 'My Trip',
+    start_date  TEXT NOT NULL,
+    end_date    TEXT NOT NULL,
+    is_active   BOOLEAN NOT NULL DEFAULT TRUE,
+    notes       TEXT,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_itineraries_tourist ON itineraries (tourist_id);
+
+-- Itinerary stops
+CREATE TABLE IF NOT EXISTS itinerary_stops (
+    id                       UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    itinerary_id             UUID NOT NULL REFERENCES itineraries(id) ON DELETE CASCADE,
+    spot_name                TEXT NOT NULL,
+    address                  TEXT,
+    stop_type                stop_type_enum NOT NULL DEFAULT 'tourist_spot',
+    planned_arrival          TEXT,
+    planned_departure        TEXT,
+    expected_duration_hours  FLOAT NOT NULL DEFAULT 3.0,
+    latitude                 FLOAT,
+    longitude                FLOAT,
+    notes                    TEXT,
+    created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_itinerary_stops_itinerary ON itinerary_stops (itinerary_id);
+
+-- Authority profiles
+CREATE TABLE IF NOT EXISTS authority_profiles (
+    id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id             TEXT UNIQUE NOT NULL,
+    authority_type      authority_type_enum NOT NULL DEFAULT 'police',
+    org_name            TEXT NOT NULL,
+    badge_number        TEXT,
+    contact_phone       TEXT,
+    contact_email       TEXT,
+    agency_tour_types   TEXT[] DEFAULT ARRAY[]::TEXT[],
+    jurisdiction_spots  JSONB DEFAULT '[]'::jsonb,
+    verified            BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_authority_profiles_user ON authority_profiles (user_id);
+
+-- Safety check events
+CREATE TABLE IF NOT EXISTS safety_check_events (
+    id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tourist_id   UUID NOT NULL REFERENCES tourists(id) ON DELETE CASCADE,
+    incident_id  UUID REFERENCES incidents(id) ON DELETE SET NULL,
+    reason       TEXT,
+    sent_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    response     safety_response_enum,
+    responded_at TIMESTAMPTZ,
+    escalated    BOOLEAN NOT NULL DEFAULT FALSE,
+    escalated_at TIMESTAMPTZ,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_safety_checks_tourist ON safety_check_events (tourist_id, created_at DESC);
+
+-- Updated-at triggers for new tables
+DO $$ BEGIN
+  CREATE TRIGGER trg_itineraries_updated_at
+    BEFORE UPDATE ON itineraries
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+EXCEPTION WHEN duplicate_object THEN NULL; END$$;
+
+DO $$ BEGIN
+  CREATE TRIGGER trg_authority_profiles_updated_at
+    BEFORE UPDATE ON authority_profiles
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+EXCEPTION WHEN duplicate_object THEN NULL; END$$;
+
+-- RLS for new tables
+ALTER TABLE itineraries        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE itinerary_stops    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE authority_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE safety_check_events ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "service_role_all_itineraries"
+    ON itineraries FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "service_role_all_itinerary_stops"
+    ON itinerary_stops FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "service_role_all_authority_profiles"
+    ON authority_profiles FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "service_role_all_safety_checks"
+    ON safety_check_events FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+-- Tourists can read/write their own itineraries
+CREATE POLICY "tourist_own_itineraries"
+    ON itineraries FOR ALL TO authenticated
+    USING (tourist_id IN (SELECT id FROM tourists WHERE supabase_user_id = auth.uid()::text))
+    WITH CHECK (tourist_id IN (SELECT id FROM tourists WHERE supabase_user_id = auth.uid()::text));
+
+CREATE POLICY "tourist_own_itinerary_stops"
+    ON itinerary_stops FOR ALL TO authenticated
+    USING (itinerary_id IN (
+        SELECT i.id FROM itineraries i
+        JOIN tourists t ON t.id = i.tourist_id
+        WHERE t.supabase_user_id = auth.uid()::text
+    ))
+    WITH CHECK (itinerary_id IN (
+        SELECT i.id FROM itineraries i
+        JOIN tourists t ON t.id = i.tourist_id
+        WHERE t.supabase_user_id = auth.uid()::text
+    ));
+
+CREATE POLICY "tourist_own_safety_checks"
+    ON safety_check_events FOR SELECT TO authenticated
+    USING (tourist_id IN (SELECT id FROM tourists WHERE supabase_user_id = auth.uid()::text));

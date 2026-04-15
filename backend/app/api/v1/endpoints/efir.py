@@ -41,6 +41,27 @@ async def list_efirs(
     return output
 
 
+@router.get("/mine")
+async def get_my_efirs(
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Returns all E-FIRs for the currently authenticated tourist."""
+    # Resolve tourist by user_id
+    from app.models import Tourist as TouristModel
+    t_result = await db.execute(
+        select(TouristModel).where(TouristModel.user_id == current_user["sub"])
+    )
+    tourist = t_result.scalar_one_or_none()
+    if not tourist:
+        return []
+
+    q = select(EFIRModel).where(EFIRModel.tourist_id == str(tourist.id)).order_by(EFIRModel.created_at.desc())
+    result = await db.execute(q)
+    records = result.scalars().all()
+    return [_efir_out(r, tourist.full_name) for r in records]
+
+
 @router.get("/{efir_id}")
 async def get_efir(
     efir_id: str,

@@ -11,9 +11,16 @@ from app.api.v1.router import api_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # Startup — skip create_all since tables are managed by Supabase migrations.
+    # Attempt a lightweight connection check; log warning on failure but don't crash.
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(lambda c: None)  # ping only
+    except Exception as exc:
+        import logging
+        logging.getLogger("uvicorn.error").warning(
+            "DB connection check failed at startup (will retry on first request): %s", exc
+        )
     yield
     # Shutdown
     await engine.dispose()

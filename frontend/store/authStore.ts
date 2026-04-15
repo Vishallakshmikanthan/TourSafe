@@ -11,6 +11,7 @@ interface AuthState {
   signOut: () => Promise<void>;
   isAuthority: () => boolean;
   isTourist: () => boolean;
+  initializeAuth: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -30,6 +31,34 @@ export const useAuthStore = create<AuthState>()(
         return role === "authority" || role === "admin" || role === "responder";
       },
       isTourist: () => get().user?.role === "tourist",
+      /** Sync store with the current Supabase session. Call this once on
+       *  layout mount so the in-memory user always reflects the real session. */
+      initializeAuth: async () => {
+        const supabase = createClient();
+        set({ isLoading: true });
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const role =
+              (user.app_metadata?.role as AuthUser["role"] | undefined) ??
+              (user.user_metadata?.role as AuthUser["role"] | undefined) ??
+              "tourist";
+            set({
+              user: {
+                id: user.id,
+                email: user.email ?? "",
+                role,
+                full_name:
+                  (user.user_metadata?.full_name as string | undefined) ?? "",
+              },
+            });
+          } else {
+            set({ user: null });
+          }
+        } finally {
+          set({ isLoading: false });
+        }
+      },
     }),
     {
       name: "toursafe-auth",

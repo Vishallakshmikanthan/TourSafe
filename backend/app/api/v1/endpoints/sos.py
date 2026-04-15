@@ -108,6 +108,40 @@ async def resolve_sos(
     return {"status": "resolved"}
 
 
+@router.post("/{incident_id}/cancel")
+async def cancel_sos(
+    incident_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    result = await db.execute(select(Incident).where(Incident.id == incident_id))
+    incident = result.scalar_one_or_none()
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+
+    # Only the triggering tourist or an authority can cancel
+    if current_user.get("role") == "tourist":
+        t_result = await db.execute(
+            select(TouristModel).where(TouristModel.user_id == current_user["sub"])
+        )
+        tourist = t_result.scalar_one_or_none()
+        if not tourist or str(incident.tourist_id) != str(tourist.id):
+            raise HTTPException(status_code=403, detail="Not authorised to cancel this SOS")
+
+    from datetime import datetime
+    incident.status = "cancelled"
+    incident.resolved_at = datetime.utcnow()
+
+    # Reset tourist status to safe
+    t_result = await db.execute(select(TouristModel).where(TouristModel.id == incident.tourist_id))
+    owner = t_result.scalar_one_or_none()
+    if owner and owner.status == "sos":
+        owner.status = "safe"
+
+    await db.commit()
+    return {"status": "cancelled"}
+
+
 @router.get("/active")
 async def get_active_sos(
     db: AsyncSession = Depends(get_db),

@@ -1,9 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  experimental: {
-    reactCompiler: true,
-  },
+  // reactCompiler is still experimental — disable it to avoid build
+  // overhead and potential rendering bugs that contribute to lag.
+  experimental: {},
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "**.supabase.co" },

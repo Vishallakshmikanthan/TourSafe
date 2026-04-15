@@ -123,6 +123,15 @@
     scrollbar-color: #E2E8F0 transparent;
   }
 
+  /* Form utilities used across tourist/authority pages */
+  .input {
+    @apply w-full rounded-lg border border-ts-mid bg-white px-3 py-2 text-sm text-ts-navy placeholder:text-ts-slate/40 outline-none focus:border-ts-teal focus:ring-2 focus:ring-ts-teal/20 transition-colors;
+  }
+
+  .label {
+    @apply block text-xs font-medium text-ts-slate/70 mb-1;
+  }
+
   .scrollbar-thin::-webkit-scrollbar {
     width: 4px;
   }

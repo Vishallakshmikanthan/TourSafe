@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   ChevronLeft,
   ChevronRight,
+  Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -26,6 +27,7 @@ const navItems = [
   { href: "/admin/analytics", icon: BarChart3, label: "Analytics" },
   { href: "/admin/zones", icon: Layers, label: "Zone Management" },
   { href: "/admin/efir", icon: FileText, label: "E-FIR System" },
+  { href: "/admin/authority-profile", icon: Building2, label: "My Organisation" },
 ];
 
 export function AdminSidebar() {
@@ -36,7 +38,7 @@ export function AdminSidebar() {
   return (
     <aside
       className={cn(
-        "flex flex-col h-full bg-ts-navy text-white transition-all duration-300 relative",
+        "flex flex-col h-full bg-ts-navy text-white transition-[width] duration-200 relative",
         collapsed ? "w-16" : "w-60"
       )}
     >
@@ -68,6 +70,7 @@ export function AdminSidebar() {
             <Link
               key={item.href}
               href={item.href}
+              prefetch={true}
               className={cn(
                 "sidebar-nav-item",
                 isActive

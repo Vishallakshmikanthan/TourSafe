@@ -25,7 +25,7 @@ export default function EFIRPage() {
     setLoading(true);
     try {
       const res = await efirApi.getAll({ status: tab });
-      setRecords(res.data ?? []);
+      setRecords(res.data?.items ?? res.data ?? []);
     } catch {
       toast.error("Failed to load E-FIR records");
     } finally {

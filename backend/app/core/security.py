@@ -61,3 +61,12 @@ async def require_tourist(
     if current_user.get("role") != "tourist":
         raise HTTPException(status_code=403, detail="Tourist access only")
     return current_user
+
+
+def require_role(*roles: str):
+    """Factory: returns a dependency that enforces the user has one of the given roles."""
+    async def _check(current_user: dict = Depends(get_current_user)) -> dict[str, Any]:
+        if current_user.get("role") not in roles:
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+        return current_user
+    return _check

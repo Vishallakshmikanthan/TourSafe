@@ -198,3 +198,91 @@ class EFIR(Base):
 
     tourist = relationship("Tourist")
     incident = relationship("Incident")
+
+
+# ─── Itinerary ────────────────────────────────────────────────────────────────
+
+class Itinerary(Base):
+    __tablename__ = "itineraries"
+
+    id = Column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    tourist_id = Column(UUID(as_uuid=False), ForeignKey("tourists.id", ondelete="CASCADE"), nullable=False, index=True)
+    title = Column(String(300), nullable=False, default="My Trip")
+    start_date = Column(String(20), nullable=False)   # ISO date YYYY-MM-DD
+    end_date = Column(String(20), nullable=False)
+    is_active = Column(Boolean, default=True)
+    notes = Column(Text)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    stops = relationship("ItineraryStop", back_populates="itinerary", cascade="all, delete-orphan", order_by="ItineraryStop.planned_arrival")
+    tourist = relationship("Tourist")
+
+
+class ItineraryStop(Base):
+    __tablename__ = "itinerary_stops"
+
+    id = Column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    itinerary_id = Column(UUID(as_uuid=False), ForeignKey("itineraries.id", ondelete="CASCADE"), nullable=False, index=True)
+    spot_name = Column(String(300), nullable=False)
+    address = Column(String(500))
+    stop_type = Column(
+        Enum("hotel", "tourist_spot", "transport", "restaurant", "other", name="stop_type_enum"),
+        default="tourist_spot",
+    )
+    planned_arrival = Column(String(30))   # ISO datetime
+    planned_departure = Column(String(30))
+    expected_duration_hours = Column(Float, default=3.0)
+    latitude = Column(Float)
+    longitude = Column(Float)
+    notes = Column(Text)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+
+    itinerary = relationship("Itinerary", back_populates="stops")
+
+
+# ─── Authority Profile ────────────────────────────────────────────────────────
+
+class AuthorityProfile(Base):
+    __tablename__ = "authority_profiles"
+
+    id = Column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    user_id = Column(String, unique=True, nullable=False, index=True)
+    authority_type = Column(
+        Enum("police", "agency", "hospital", "other", name="authority_type_enum"),
+        nullable=False,
+        default="police",
+    )
+    org_name = Column(String(300), nullable=False)
+    badge_number = Column(String(100))
+    contact_phone = Column(String(30))
+    contact_email = Column(String(200))
+    # For travel agencies
+    agency_tour_types = Column(ARRAY(String), default=list)
+    # Jurisdiction: list of spot names under this authority's watch
+    jurisdiction_spots = Column(JSON, default=list)
+    verified = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+# ─── Safety Check Event ───────────────────────────────────────────────────────
+
+class SafetyCheckEvent(Base):
+    __tablename__ = "safety_check_events"
+
+    id = Column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    tourist_id = Column(UUID(as_uuid=False), ForeignKey("tourists.id", ondelete="CASCADE"), nullable=False, index=True)
+    incident_id = Column(UUID(as_uuid=False), ForeignKey("incidents.id", ondelete="SET NULL"), nullable=True)
+    reason = Column(String(300))
+    sent_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    response = Column(
+        Enum("safe", "unsafe", "no_response", name="safety_response_enum"),
+        nullable=True,
+    )
+    responded_at = Column(DateTime(timezone=True))
+    escalated = Column(Boolean, default=False)
+    escalated_at = Column(DateTime(timezone=True))
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+
+    tourist = relationship("Tourist")

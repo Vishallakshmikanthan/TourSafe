@@ -27,11 +27,16 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error && data.user) {
-      const role = data.user.user_metadata?.role as string | undefined;
-      if (role === "tourist") {
-        return NextResponse.redirect(`${origin}/tourist/dashboard`);
+      // Only trust app_metadata.role — it is set server-side via the Admin API
+      // and cannot be overwritten by the client. user_metadata is user-writable
+      // and must NOT be used for routing decisions.
+      const role = data.user.app_metadata?.role as string | undefined;
+
+      if (role === "admin" || role === "authority" || role === "responder") {
+        return NextResponse.redirect(`${origin}/admin/dashboard`);
       }
-      return NextResponse.redirect(`${origin}/admin/dashboard`);
+      // Default: tourist (includes no-role Google OAuth users)
+      return NextResponse.redirect(`${origin}/tourist/dashboard`);
     }
   }
 

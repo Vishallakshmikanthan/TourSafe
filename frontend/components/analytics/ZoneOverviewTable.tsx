@@ -20,7 +20,11 @@ export function ZoneOverviewTable() {
   useEffect(() => {
     zoneApi
       .getAll()
-      .then((r) => setZones(r.data?.items ?? []))
+      .then((r) => {
+        // API returns array directly (not paged)
+        const data = Array.isArray(r.data) ? r.data : (r.data?.items ?? []);
+        setZones(data);
+      })
       .catch(() => setZones([]));
   }, []);
 

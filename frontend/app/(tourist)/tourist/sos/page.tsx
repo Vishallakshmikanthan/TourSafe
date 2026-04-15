@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useCallback, useState } from "react";
-import { useSosStore } from "@/store/sosStore";
+import { useSOSStore } from "@/store/sosStore";
 import { sosApi, touristApi } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { ShieldAlert, Phone, CheckCircle, X, Clock, MapPin, AlertTriangle } from "lucide-react";
@@ -18,7 +18,7 @@ export default function SOSPage() {
     cancelCountdown,
     decrementCountdown,
     activeEvents,
-  } = useSosStore();
+  } = useSOSStore();
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [sending, setSending] = useState(false);
 
@@ -71,10 +71,10 @@ export default function SOSPage() {
         longitude: location?.lng ?? 0,
         description: "Emergency SOS triggered from TourSafe app",
       });
-      useSosStore.getState().setSosStatus("triggered");
+      useSOSStore.getState().setSosStatus("triggered");
       toast.error("SOS DISPATCHED — Authorities notified", { duration: 8000 });
     } catch {
-      useSosStore.getState().setSosStatus("idle");
+      useSOSStore.getState().setSosStatus("idle");
       toast.error("Failed to dispatch SOS. Call 112 directly.");
     } finally {
       setSending(false);

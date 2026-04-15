@@ -4,7 +4,7 @@ import { createServerClient } from "@supabase/ssr";
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow auth routes
+  // Allow auth routes through without any auth check
   if (pathname.startsWith("/auth")) return NextResponse.next();
 
   // Dev bypass: skip all auth checks when NEXT_PUBLIC_DEV_BYPASS=true
@@ -29,27 +29,34 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  let user = null;
+  // Use getSession() — reads JWT from cookie with NO network round-trip.
+  // This is the correct pattern for middleware; only use getUser() in
+  // server components/actions where you need server-side verification.
+  let session = null;
   try {
-    const { data } = await supabase.auth.getUser();
-    user = data.user;
+    const { data } = await supabase.auth.getSession();
+    session = data.session;
   } catch {
-    // Supabase unavailable (e.g. missing env vars) — send to login
     return NextResponse.redirect(new URL("/auth/login", request.url));
   }
 
-  if (!user) {
+  if (!session) {
     return NextResponse.redirect(new URL("/auth/login", request.url));
   }
 
-  // Role-based routing
-  const role = user.user_metadata?.role as string | undefined;
+  // Role-based routing — read ONLY from app_metadata (server-set, not user-writable).
+  // Never use user_metadata.role: it can be set by the client and cannot be trusted
+  // for access control decisions.
+  const role = session.user.app_metadata?.role as string | undefined;
 
   if (pathname.startsWith("/admin") && role === "tourist") {
     return NextResponse.redirect(new URL("/tourist/dashboard", request.url));
   }
 
-  if (pathname.startsWith("/tourist") && role !== "tourist") {
+  // Only block tourist routes for users with an explicit non-tourist role.
+  // role=undefined means a new tourist who hasn't had their metadata stamped
+  // yet — let them through so the login page can call updateUser first.
+  if (pathname.startsWith("/tourist") && role !== undefined && role !== "tourist") {
     return NextResponse.redirect(new URL("/admin/dashboard", request.url));
   }
 
@@ -57,7 +64,10 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
+  // Only run middleware on actual page routes — skip static assets,
+  // Next.js internals, images, and API routes to prevent unnecessary work.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|api/webhooks).*)",
+    "/admin/:path*",
+    "/tourist/:path*",
   ],
 };

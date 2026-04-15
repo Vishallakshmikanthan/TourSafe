@@ -16,8 +16,12 @@ export default function TouristMiniMapClient({ lat, lng }: Props) {
   const centerLng = lng ?? 78.9629;
 
   useEffect(() => {
+    let mounted = true;
     if (typeof window === "undefined" || mapRef.current) return;
     import("leaflet").then((L) => {
+      if (!mounted || !containerRef.current) return;
+      // Guard against StrictMode double-invoke leaving stale _leaflet_id
+      if ((containerRef.current as any)._leaflet_id) return;
       delete (L.Icon.Default.prototype as any)._getIconUrl;
       L.Icon.Default.mergeOptions({
         iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
@@ -46,6 +50,7 @@ export default function TouristMiniMapClient({ lat, lng }: Props) {
       mapRef.current = map;
     });
     return () => {
+      mounted = false;
       mapRef.current?.remove();
       mapRef.current = null;
     };
